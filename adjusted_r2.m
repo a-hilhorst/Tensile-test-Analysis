@@ -1,5 +1,5 @@
-function rsq_adj = adjustedR2(y,yfit_linear)
-% ADJUSTEDR2(y,yfit_linear) returns the adjusted R-squared of the linear 
+function rsq_adj = adjusted_r2(y,yfit_linear)
+% ADJUSTED_R2(y,yfit_linear) returns the adjusted R-squared of the linear 
 % regression of y
 
     yresid = y - yfit_linear;

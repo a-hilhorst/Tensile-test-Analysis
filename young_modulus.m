@@ -1,18 +1,18 @@
-function E = youngModulus(sigma,epsilon,nE)
-% YOUNGMODULUS(sigma,epsilon) returns the Young's modulus E in [GPa] from 
+function E = young_modulus(sigma,epsilon,nE)
+% YOUNG_MODULUS(sigma,epsilon) returns the Young's modulus E in [GPa] from 
 % the stress sigma in [MPa] and the strain epsilon in [%]. E is computed by
 % linear regression of the first 1e3 points of the stress-strain vectors. 
 %
-% YOUNGMODULUS(sigma,epsilon,nE) returns the Young's modulus E in [GPa] 
+% YOUNG_MODULUS(sigma,epsilon,nE) returns the Young's modulus E in [GPa] 
 % from the stress sigma in [MPa] and the strain epsilon in [%]. E is 
 % computed by linear regression of the first nE points of the stress-strain
 % vectors.
 %
-% YOUNGMODULUS(sigma,epsilon,0) returns the Young's modulus E in [GPa] 
+% YOUNG_MODULUS(sigma,epsilon,0) returns the Young's modulus E in [GPa] 
 % from the stress sigma in [MPa] and the strain epsilon in [%]. E is 
 % computed by linear regression of the first points with the lowest R^2.
 %
-% see also SigEpsEng, SigEpsTru, yieldStrength.
+% see also sig_eps_eng, sig_eps_tru, yield_strength.
     
     p = inputParser;
 
