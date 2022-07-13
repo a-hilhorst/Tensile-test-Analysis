@@ -36,7 +36,13 @@ ind_table = group_data(name,keywords,group_names);
 pltoptions = {
     {'eng','true'}, ... for group 'stainless_steel'
     {'eng','true'}, ... for group '316L'
-    {'eng'}         ... for group '304L','02'
+    {}         ... for group '304L','02'
 };
+
+values = ...
+    plot_tensile_test(data);
+
+
+
 
 

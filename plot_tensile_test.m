@@ -1,4 +1,4 @@
-function [values,ax] = plot_tensile_test(data,groups,pltoptions,figType,figStyle,varargin)
+function [values,ax] = plot_tensile_test(data,varargin)
 % PLOT_TENSILE_TEST
 %
 % WIP
@@ -11,23 +11,25 @@ function [values,ax] = plot_tensile_test(data,groups,pltoptions,figType,figStyle
 
     p = inputParser;
 
-    defaultgroups = {};
+    defaultGroups = table;
     defaultpltoptions = {};
     defaultfigType = {};
-    defaultfigStyle = defaultStyle;
-    defaultsaveFigures = true;
-    defaultsaveValues = false;
-    defaultdisplayValues = true;
+    defaultfigStyle = {};
+    defaultSaveFigures = true;
+    defaultSaveValues = false;
+    defaultDisplayValues = true;
     
-    addOptional(p,'groups',defaultgroups,@iscellstr)
+    addRequired(p,'data')
+    addOptional(p,'groups',defaultGroups,@iscellstr)
     addOptional(p,'pltoptions',defaultpltoptions,@iscellstr)
     addOptional(p,'figType',defaultfigType,@iscellstr)
     addOptional(p,'figStyle',defaultfigStyle)
-    addParameter(p,'saveFigures',defaultsaveFigures,@isnumeric)
-    addParameter(p,'saveValues',defaultsaveValues,@isnumeric)
-    addParameter(p,'displayValues',defaultdisplayValues,@isnumeric)
+    addParameter(p,'saveFigures',defaultSaveFigures,@isnumeric)
+    addParameter(p,'saveValues',defaultSaveValues,@isnumeric)
+    addParameter(p,'displayValues',defaultDisplayValues,@isnumeric)
     
-    parse(p,pltoptions,groups,figType,figStyle,varargin);
+    parse(p,data,varargin{:});
+    data = p.Results.data;
     groups = p.Results.groups;
     pltoptions = p.Results.pltoptions;
     figType = p.Results.figType;
@@ -39,7 +41,32 @@ function [values,ax] = plot_tensile_test(data,groups,pltoptions,figType,figStyle
     fn = groups.Properties.VariableNames;    
     
     %% engineering stress-strain
+    figure
+    hold on
+    ax_eng = gca;
+
+    if isempty(groups)
+        for i=1:1:length(data)
+            [sigma,epsilon] = sig_eps_eng(...
+                data{i}.F,...
+                data{i}.u,...
+                data{i}.A0,...
+                data{i}.L0);
+            
+            if isempty(figStyle)
+                plot(ax_eng, epsilon, sigma)
+            else
+                plot(ax_eng, epsilon, sigma, figStyle{:})
+            end
+        end
+    end
+
+    if isempty(figStyle)
+        default_figure_style(ax_eng)
+    end
     
-    
+    %%
+    values = [];
+    ax = [];
 end
 
