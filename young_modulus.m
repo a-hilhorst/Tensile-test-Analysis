@@ -1,4 +1,4 @@
-function E = young_modulus(sigma,epsilon,nE)
+function E = young_modulus(sigma,epsilon,varargin)
 % YOUNG_MODULUS(sigma,epsilon) returns the Young's modulus E in [GPa] from 
 % the stress sigma in [MPa] and the strain epsilon in [%]. E is computed by
 % linear regression of the first 1e3 points of the stress-strain vectors. 
@@ -20,7 +20,7 @@ function E = young_modulus(sigma,epsilon,nE)
     
     addOptional(p,'nE',defaultnE,@isnumeric)
     
-    parse(p,nE);
+    parse(p,varargin{:});
     nE = p.Results.nE;
     
     if ~nE
@@ -29,7 +29,10 @@ function E = young_modulus(sigma,epsilon,nE)
         
         error = zeros(1,n);
         for i=1:1:n
-            error(i) = adjustedR2(sigma,polyfit(epsilon(1:i*step),sigma(1:i*step),1));
+            y1 = sigma(1:n*step);
+            p = polyfit(epsilon(1:i*step),sigma(1:i*step),1);
+            y2 = polyval(p,epsilon(1:n*step));
+            error(i) = adjusted_r2(y1,y2);
         end
         [~,ind] = min(error);
         
