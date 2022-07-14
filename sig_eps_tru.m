@@ -1,4 +1,4 @@
-function [sigma,epsilon] = sig_eps_tru(sigma_eng,epsilon_eng,maxInd,fRange)
+function [sigma,epsilon] = sig_eps_tru(sigma_eng,epsilon_eng,varargin)
 % SIG_EPS_TRU(F,u,A0,L0) returns the true stress sigma in [MPa] and
 % true epsilon in [-] from the engineering stress sigma_eng in [MPa] and 
 % the engineering strain espilon_eng in [%].
@@ -13,13 +13,13 @@ function [sigma,epsilon] = sig_eps_tru(sigma_eng,epsilon_eng,maxInd,fRange)
     addOptional(p,'maxInd',defaultmaxInd,@isnumeric)
     addOptional(p,'fRange',defaultfRange,@isnumeric)
 
-    parse(p,maxInd,fRange);
+    parse(p,varargin{:});
     maxInd = p.Results.maxInd;
     fRange = p.Results.fRange;
 
     if ~maxInd
         vRange = round(fRange*length(sigma_eng));
-        [~,maxInd] = max(sigma_eng(end-vRange:end));
+        [~,maxInd] = max(sigma_eng(end-vRange+1:end));
         maxInd = min(maxInd+length(sigma_eng)-vRange,length(epsilon_eng));
     end
     

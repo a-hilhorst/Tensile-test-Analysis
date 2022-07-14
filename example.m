@@ -29,18 +29,20 @@ keywords = {{'stainless_steel'},{'316L'},{'304L','02'}};
 group_names = {'SS', '316L', '304L 02'};
 
 % get indices
-ind_table = group_data(name,keywords,group_names);
+groups = group_data(name,keywords,group_names);
 
 %% plot figure of interest
 % let's define what to plot for each group
 pltoptions = {
     {'eng','true'}, ... for group 'stainless_steel'
     {'eng','true'}, ... for group '316L'
-    {}         ... for group '304L','02'
+    {''}         ... for group '304L','02'
 };
 
-values = ...
-    plot_tensile_test(data);
+values = plot_tensile_test(...
+    data, ...
+    'groups', groups, ...
+    'pltoptions', pltoptions);
 
 
 
