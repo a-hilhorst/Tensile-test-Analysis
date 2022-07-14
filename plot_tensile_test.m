@@ -13,32 +13,26 @@ function [values,ax] = plot_tensile_test(data,varargin)
 
     defaultGroups = table;
     defaultpltoptions = {'eng', 'true'};
-    defaultfigType = {};
     defaultfigStyle = {};
-    defaultSaveFigures = true;
-    defaultSaveValues = false;
-    defaultDisplayValues = true;
     
     addRequired(p,'data')
     addOptional(p,'groups',defaultGroups,@istable)
     addOptional(p,'pltoptions',defaultpltoptions,@iscell)
-    addOptional(p,'figType',defaultfigType,@iscellstr)
     addOptional(p,'figStyle',defaultfigStyle)
-    addParameter(p,'saveFigures',defaultSaveFigures,@isnumeric)
-    addParameter(p,'saveValues',defaultSaveValues,@isnumeric)
-    addParameter(p,'displayValues',defaultDisplayValues,@isnumeric)
     
     parse(p,data,varargin{:});
     data = p.Results.data;
     groups = p.Results.groups;
     pltoptions = p.Results.pltoptions;
-    figType = p.Results.figType;
     figStyle = p.Results.figStyle;
-    saveFigures = p.Results.saveFigures;
-    saveValues = p.Results.saveValues;
-    displayValues = p.Results.displayValues;
     
     fn = groups.Properties.VariableNames;
+
+    for i=1:1:length(pltoptions)
+        if isempty(pltoptions{i})
+            pltoptions{i} = defaultpltoptions;
+        end
+    end
 
     if width(groups)<length(pltoptions)
         pltoptions = unique([pltoptions{:}]);
@@ -56,6 +50,9 @@ function [values,ax] = plot_tensile_test(data,varargin)
         hold on
         ax_eng = gca;
         title('Engineering stress-strain')
+
+        E = zeros(1, length(data));
+        sigma_y = zeros(1, length(data));
         for i=1:1:length(data)
             [sigma,epsilon] = sig_eps_eng(...
                 data{i}.F,...
@@ -68,6 +65,9 @@ function [values,ax] = plot_tensile_test(data,varargin)
             else
                 plot(ax_eng, epsilon, sigma, figStyle{:})
             end
+
+            E(i) = young_modulus(sigma,epsilon,0);
+            sigma_y(i) = yield_strength(sigma,epsilon*100,E(i));
         end
 
         if isempty(figStyle)
@@ -77,14 +77,19 @@ function [values,ax] = plot_tensile_test(data,varargin)
         ax_eng = gobjects(1, width(groups));
         xlim_max = 0;
         ylim_max = 0;
+
+        E = zeros(1, width(groups));
+        sigma_y = zeros(1, width(groups));
         for ng=1:1:width(groups)
             if any(contains(pltoptions{ng},'eng'))
                 figure
                 hold on
                 ax_eng(ng) = gca;
                 title(sprintf('Engineering stress-strain, %s', fn{ng}))
-                i = 1:1:length(data);
-                for i=i(logical(groups.(fn{ng})))
+
+                ind_data = 1:1:length(data);
+                ind_data = ind_data(logical(groups.(fn{ng})));
+                for i=ind_data
                     [sigma,epsilon] = sig_eps_eng(...
                         data{i}.F,...
                         data{i}.u,...
@@ -96,7 +101,14 @@ function [values,ax] = plot_tensile_test(data,varargin)
                     else
                         plot(ax_eng(ng), epsilon, sigma, figStyle{:})
                     end
+                    
+                    Etmp = young_modulus(sigma,epsilon,0);
+                    E(ng) = E(ng) + Etmp;
+                    sigma_y(ng) = sigma_y(ng) + yield_strength(sigma,epsilon*100,Etmp);
                 end
+                E(ng) = E(ng) / length(ind_data);
+                sigma_y(ng) = sigma_y(ng) / length(ind_data);
+
                 if isempty(figStyle)
                     default_figure_style(ax_eng(ng))
                     xlim_max = max(xlim_max,max(ax_eng(ng).XLim));
@@ -106,6 +118,7 @@ function [values,ax] = plot_tensile_test(data,varargin)
                 ax_eng(ng) = [];
             end
         end
+
         for nax=1:1:length(ax_eng)
             ax_eng(nax).XLim = [0 xlim_max];
             ax_eng(nax).YLim = [0 ylim_max];
@@ -148,8 +161,10 @@ function [values,ax] = plot_tensile_test(data,varargin)
                 hold on
                 ax_true(ng) = gca;
                 title(sprintf('True stress-strain, %s', fn{ng}))
-                i = 1:1:length(data);
-                for i=i(logical(groups.(fn{ng})))
+
+                ind_data = 1:1:length(data);
+                ind_data = ind_data(logical(groups.(fn{ng})));
+                for i=ind_data
                     [sigma,epsilon] = sig_eps_eng(...
                         data{i}.F,...
                         data{i}.u,...
@@ -181,7 +196,10 @@ function [values,ax] = plot_tensile_test(data,varargin)
     end
     
     %%
-    values = [];
+    values.groups = fn;
+    values.young_modulus = E;
+    values.yield_strength = sigma_y;
+
     ax = [];
 end
 
