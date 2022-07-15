@@ -3,7 +3,6 @@ function [values,ax] = plot_tensile_test(data,varargin)
 %
 % WIP
 % to do
-% - implement plotting of eng stress strain
 % - implement kocks and mecking plot
 % - implement strain hardening plots
 % - implement stress strain law fit
@@ -194,6 +193,10 @@ function [values,ax] = plot_tensile_test(data,varargin)
             ax_true(nax).YLim = [0 ylim_max];
         end
     end
+
+    %% strain hardening
+
+    %% Kocks-Mecking plots
     
     %%
     values.groups = fn;

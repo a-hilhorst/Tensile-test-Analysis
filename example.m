@@ -1,3 +1,13 @@
+%% WIP
+% to do
+% - print figure example using export_fig
+% - plotoptions
+%    - truf = true stress strain with Af
+%    - shr = strain hardening
+%    - mean = mean curve
+%    - knm = kocks and mecking plots
+%%
+
 %%% example %%%
 close all
 
