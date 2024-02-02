@@ -195,7 +195,92 @@ function [values,ax] = plot_tensile_test(data,varargin)
     end
 
     %% strain hardening
+    if isempty(groups) && any(contains([pltoptions{:}],'shr'))
+        figure
+        hold on
+        ax_shr = gca;
+        title('Strain hardening rate')
+        for i=1:1:length(data)
+            [sigma,epsilon] = sig_eps_eng(...
+                data{i}.F,...
+                data{i}.u,...
+                data{i}.A0,...
+                data{i}.L0);
+            E = young_modulus(sigma,epsilon,0);
+            sigma_y = yield_strength(sigma,epsilon*100,E);
+            [sigma,epsilon] = sig_eps_tru(...
+                sigma,...
+                epsilon);
+            [shr,sigma,epsilon] = strain_hardening(...
+                sigma, ...
+                epsilon, ...
+                sigma_y);
+            
+            if isempty(figStyle)
+%                 plot(ax_true, sigma, shr, '-')
+                plot(ax_true, epsilon, shr, '-')
+            else
+%                 plot(ax_true, sigma, shr, '-', figStyle{:})
+                plot(ax_true, epsilon, shr, '-', figStyle{:})
+            end
+        end
 
+        if isempty(figStyle)
+            default_figure_style(ax_shr)
+        end
+    else 
+        ax_shr = gobjects(1, width(groups));
+        empty_ax = zeros(size(ax_shr));
+        xlim_max = 0;
+        ylim_max = 0;
+        for ng=1:1:width(groups)
+            if any(contains(pltoptions{ng},'shr'))
+                figure
+                hold on
+                ax_shr(ng) = gca;
+                title(sprintf('Strain hardening rate, %s', fn{ng}))
+
+                ind_data = 1:1:length(data);
+                ind_data = ind_data(logical(groups.(fn{ng})));
+                for i=ind_data
+                    [sigma,epsilon] = sig_eps_eng(...
+                        data{i}.F,...
+                        data{i}.u,...
+                        data{i}.A0,...
+                        data{i}.L0);
+                    E = young_modulus(sigma,epsilon,0);
+                    sigma_y = yield_strength(sigma,epsilon*100,E);
+                    [sigma,epsilon] = sig_eps_tru(...
+                        sigma,...
+                        epsilon);
+                    [shr,sigma,epsilon] = strain_hardening(...
+                        sigma, ...
+                        epsilon, ...
+                        sigma_y);
+                    
+                    if isempty(figStyle)
+%                         plot(ax_shr(ng), sigma, shr, '-')
+                        plot(ax_shr(ng), epsilon, shr, '-')
+                    else
+%                         plot(ax_shr(ng), sigma, shr, '-', figStyle{:})
+                        plot(ax_shr(ng), epsilon, shr, '-', figStyle{:})
+                    end
+                end
+                if isempty(figStyle)
+                    default_figure_style(ax_shr(ng))
+                    xlim_max = max(xlim_max,max(ax_shr(ng).XLim));
+                    ylim_max = max(ylim_max,max(ax_shr(ng).YLim));
+                end
+            else
+                empty_ax(ng) = 1;
+            end
+        end
+        ax_shr(logical(empty_ax)) = [];
+        for nax=1:1:length(ax_shr)
+            ax_shr(nax).XLim = [0 xlim_max];
+            ax_shr(nax).YLim = [0 ylim_max];
+        end
+    end
     %% Kocks-Mecking plots
     
     %%

@@ -45,7 +45,7 @@ groups = group_data(name,keywords,group_names);
 % let's define what to plot for each group
 pltoptions = {
     {'eng','true'}, ... for group 'stainless_steel'
-    {'eng','true'}, ... for group '316L'
+    {'eng','true','shr'}, ... for group '316L'
     {}         ... for group '304L','02'
 };
 
