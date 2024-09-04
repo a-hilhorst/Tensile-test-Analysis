@@ -14,4 +14,4 @@ curves = {curve1, curve2, curve3};
 
 n=22;
 avg = mean_curve(curves,n);
-plot(avg(1,:),avg(2,:),'-v','linewidth',2)
+plot(avg{1}(1,:),avg{1}(2,:),'-v','linewidth',2)

@@ -6,8 +6,12 @@
 %    - shr = strain hardening
 %    - mean = mean curve
 %    - knm = kocks and mecking plots
-%%
+%
+% - can be run with no inputs?
+% - data import options
+%
 
+%%
 %%% example %%%
 close all
 

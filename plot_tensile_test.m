@@ -3,291 +3,164 @@ function [values,ax] = plot_tensile_test(data,varargin)
 %
 % WIP
 % to do
-% - implement kocks and mecking plot
-% - implement strain hardening plots
 % - implement stress strain law fit
 % - implement mean curve
 
+    %% Input parsing
     p = inputParser;
 
+    % default
     defaultGroups = table;
-    defaultpltoptions = {'eng', 'true'};
+    defaultpltOptions = {'eng', 'true'};
     defaultfigStyle = {};
     
+    % required and optional variables
     addRequired(p,'data')
     addOptional(p,'groups',defaultGroups,@istable)
-    addOptional(p,'pltoptions',defaultpltoptions,@iscell)
+    addOptional(p,'pltoptions',defaultpltOptions,@iscell)
     addOptional(p,'figStyle',defaultfigStyle)
     
     parse(p,data,varargin{:});
     data = p.Results.data;
     groups = p.Results.groups;
-    pltoptions = p.Results.pltoptions;
+    pltOptions = p.Results.pltoptions;
     figStyle = p.Results.figStyle;
     
-    fn = groups.Properties.VariableNames;
+    groupNames = groups.Properties.VariableNames;
 
-    for i=1:1:length(pltoptions)
-        if isempty(pltoptions{i})
-            pltoptions{i} = defaultpltoptions;
+    for i=1:1:length(pltOptions)
+        if isempty(pltOptions{i})
+            pltOptions{i} = defaultpltOptions;
         end
     end
 
-    if width(groups)<length(pltoptions)
-        pltoptions = unique([pltoptions{:}]);
-    elseif width(groups)>length(pltoptions)
-        pltoptions_u = unique([pltoptions{:}]);
-        pltoptions = cell(1,width(groups));
-        for i=1:1:width(groups)
-            pltoptions{i} = pltoptions_u;
+    % pltOptions based on groups
+    numGroups = width(groups);
+    if numGroups < length(pltOptions)
+        pltOptions = unique([pltOptions{:}]);
+    elseif numGroups > length(pltOptions)
+        uniqueOptions = unique([pltOptions{:}]);
+        pltOptions = repmat({uniqueOptions}, 1, numGroups);
+    end
+
+    % plot settings
+    plotTypes = {'eng', 'true', 'shr'};
+    plotTitles = {'Engineering stress-strain', 'True stress-strain', 'Strain hardening rate'};
+    plotFunctions = {@plotEngineering, @plotTrue, @plotStrainHardening};
+
+    ax = cell(1, 3);
+    E = zeros(1, max(1, numGroups));
+    sigma_y = zeros(1, max(1, numGroups));
+    
+    %
+    for i = 1:length(plotTypes)
+        if isempty(groups) && any(contains([pltOptions{:}], plotTypes{i}))
+            [ax{i}, E, sigma_y] = plotFunctions{i}(data, figStyle, plotTitles{i});
+        else
+            ax{i} = gobjects(1, numGroups);
+            emptyAx = false(1, numGroups);
+
+            for ng = 1:numGroups
+                if any(contains(pltOptions{ng}, plotTypes{i}))
+                    [ax{i}(ng), E(ng), sigma_y(ng)] = ...
+                        plotFunctions{i}(data(logical(groups.(groupNames{ng}))), figStyle, ...
+                        sprintf('%s, %s', plotTitles{i}, groupNames{ng}));
+                else
+                    emptyAx(ng) = true;
+                end
+            end
+            ax{i}(emptyAx) = [];
+            setAxisLimits(ax{i});
         end
     end
     
-    %% engineering stress-strain
-    if isempty(groups) && any(contains([pltoptions{:}],'eng'))
-        figure
-        hold on
-        ax_eng = gca;
-        title('Engineering stress-strain')
-
-        E = zeros(1, length(data));
-        sigma_y = zeros(1, length(data));
-        for i=1:1:length(data)
-            [sigma,epsilon] = sig_eps_eng(...
-                data{i}.F,...
-                data{i}.u,...
-                data{i}.A0,...
-                data{i}.L0);
-            
-            if isempty(figStyle)
-                plot(ax_eng, epsilon, sigma)
-            else
-                plot(ax_eng, epsilon, sigma, figStyle{:})
-            end
-
-            E(i) = young_modulus(sigma,epsilon,0);
-            sigma_y(i) = yield_strength(sigma,epsilon*100,E(i));
-        end
-
-        if isempty(figStyle)
-            default_figure_style(ax_eng)
-        end
-    else 
-        ax_eng = gobjects(1, width(groups));
-        xlim_max = 0;
-        ylim_max = 0;
-
-        E = zeros(1, width(groups));
-        sigma_y = zeros(1, width(groups));
-        for ng=1:1:width(groups)
-            if any(contains(pltoptions{ng},'eng'))
-                figure
-                hold on
-                ax_eng(ng) = gca;
-                title(sprintf('Engineering stress-strain, %s', fn{ng}))
-
-                ind_data = 1:1:length(data);
-                ind_data = ind_data(logical(groups.(fn{ng})));
-                for i=ind_data
-                    [sigma,epsilon] = sig_eps_eng(...
-                        data{i}.F,...
-                        data{i}.u,...
-                        data{i}.A0,...
-                        data{i}.L0);
-                    
-                    if isempty(figStyle)
-                        plot(ax_eng(ng), epsilon, sigma)
-                    else
-                        plot(ax_eng(ng), epsilon, sigma, figStyle{:})
-                    end
-                    
-                    Etmp = young_modulus(sigma,epsilon,0);
-                    E(ng) = E(ng) + Etmp;
-                    sigma_y(ng) = sigma_y(ng) + yield_strength(sigma,epsilon*100,Etmp);
-                end
-                E(ng) = E(ng) / length(ind_data);
-                sigma_y(ng) = sigma_y(ng) / length(ind_data);
-
-                if isempty(figStyle)
-                    default_figure_style(ax_eng(ng))
-                    xlim_max = max(xlim_max,max(ax_eng(ng).XLim));
-                    ylim_max = max(ylim_max,max(ax_eng(ng).YLim));
-                end
-            else
-                ax_eng(ng) = [];
-            end
-        end
-
-        for nax=1:1:length(ax_eng)
-            ax_eng(nax).XLim = [0 xlim_max];
-            ax_eng(nax).YLim = [0 ylim_max];
-        end
-    end
-
-    %% true stress-strain
-    if isempty(groups) && any(contains([pltoptions{:}],'true'))
-        figure
-        hold on
-        ax_true = gca;
-        title('True stress-strain')
-        for i=1:1:length(data)
-            [sigma,epsilon] = sig_eps_eng(...
-                data{i}.F,...
-                data{i}.u,...
-                data{i}.A0,...
-                data{i}.L0);
-            [sigma,epsilon] = sig_eps_tru(...
-                sigma,...
-                epsilon);
-            
-            if isempty(figStyle)
-                plot(ax_true, epsilon, sigma)
-            else
-                plot(ax_true, epsilon, sigma, figStyle{:})
-            end
-        end
-
-        if isempty(figStyle)
-            default_figure_style(ax_true)
-        end
-    else 
-        ax_true = gobjects(1, width(groups));
-        xlim_max = 0;
-        ylim_max = 0;
-        for ng=1:1:width(groups)
-            if any(contains(pltoptions{ng},'true'))
-                figure
-                hold on
-                ax_true(ng) = gca;
-                title(sprintf('True stress-strain, %s', fn{ng}))
-
-                ind_data = 1:1:length(data);
-                ind_data = ind_data(logical(groups.(fn{ng})));
-                for i=ind_data
-                    [sigma,epsilon] = sig_eps_eng(...
-                        data{i}.F,...
-                        data{i}.u,...
-                        data{i}.A0,...
-                        data{i}.L0);
-                    [sigma,epsilon] = sig_eps_tru(...
-                        sigma,...
-                        epsilon);
-                    
-                    if isempty(figStyle)
-                        plot(ax_true(ng), epsilon, sigma)
-                    else
-                        plot(ax_true(ng), epsilon, sigma, figStyle{:})
-                    end
-                end
-                if isempty(figStyle)
-                    default_figure_style(ax_true(ng))
-                    xlim_max = max(xlim_max,max(ax_true(ng).XLim));
-                    ylim_max = max(ylim_max,max(ax_true(ng).YLim));
-                end
-            else
-                ax_true(ng) = [];
-            end
-        end
-        for nax=1:1:length(ax_true)
-            ax_true(nax).XLim = [0 xlim_max];
-            ax_true(nax).YLim = [0 ylim_max];
-        end
-    end
-
-    %% strain hardening
-    if isempty(groups) && any(contains([pltoptions{:}],'shr'))
-        figure
-        hold on
-        ax_shr = gca;
-        title('Strain hardening rate')
-        for i=1:1:length(data)
-            [sigma,epsilon] = sig_eps_eng(...
-                data{i}.F,...
-                data{i}.u,...
-                data{i}.A0,...
-                data{i}.L0);
-            E = young_modulus(sigma,epsilon,0);
-            sigma_y = yield_strength(sigma,epsilon*100,E);
-            [sigma,epsilon] = sig_eps_tru(...
-                sigma,...
-                epsilon);
-            [shr,sigma,epsilon] = strain_hardening(...
-                sigma, ...
-                epsilon, ...
-                sigma_y);
-            
-            if isempty(figStyle)
-%                 plot(ax_true, sigma, shr, '-')
-                plot(ax_true, epsilon, shr, '-')
-            else
-%                 plot(ax_true, sigma, shr, '-', figStyle{:})
-                plot(ax_true, epsilon, shr, '-', figStyle{:})
-            end
-        end
-
-        if isempty(figStyle)
-            default_figure_style(ax_shr)
-        end
-    else 
-        ax_shr = gobjects(1, width(groups));
-        empty_ax = zeros(size(ax_shr));
-        xlim_max = 0;
-        ylim_max = 0;
-        for ng=1:1:width(groups)
-            if any(contains(pltoptions{ng},'shr'))
-                figure
-                hold on
-                ax_shr(ng) = gca;
-                title(sprintf('Strain hardening rate, %s', fn{ng}))
-
-                ind_data = 1:1:length(data);
-                ind_data = ind_data(logical(groups.(fn{ng})));
-                for i=ind_data
-                    [sigma,epsilon] = sig_eps_eng(...
-                        data{i}.F,...
-                        data{i}.u,...
-                        data{i}.A0,...
-                        data{i}.L0);
-                    E = young_modulus(sigma,epsilon,0);
-                    sigma_y = yield_strength(sigma,epsilon*100,E);
-                    [sigma,epsilon] = sig_eps_tru(...
-                        sigma,...
-                        epsilon);
-                    [shr,sigma,epsilon] = strain_hardening(...
-                        sigma, ...
-                        epsilon, ...
-                        sigma_y);
-                    
-                    if isempty(figStyle)
-%                         plot(ax_shr(ng), sigma, shr, '-')
-                        plot(ax_shr(ng), epsilon, shr, '-')
-                    else
-%                         plot(ax_shr(ng), sigma, shr, '-', figStyle{:})
-                        plot(ax_shr(ng), epsilon, shr, '-', figStyle{:})
-                    end
-                end
-                if isempty(figStyle)
-                    default_figure_style(ax_shr(ng))
-                    xlim_max = max(xlim_max,max(ax_shr(ng).XLim));
-                    ylim_max = max(ylim_max,max(ax_shr(ng).YLim));
-                end
-            else
-                empty_ax(ng) = 1;
-            end
-        end
-        ax_shr(logical(empty_ax)) = [];
-        for nax=1:1:length(ax_shr)
-            ax_shr(nax).XLim = [0 xlim_max];
-            ax_shr(nax).YLim = [0 ylim_max];
-        end
-    end
-    %% Kocks-Mecking plots
-    
-    %%
-    values.groups = fn;
+    % Output values
+    values.groups = groupNames;
     values.young_modulus = E;
     values.yield_strength = sigma_y;
-
-    ax = [];
 end
 
+function [ax, E, sigma_y] = plotEngineering(data, figStyle, titleStr)
+    figure; 
+    hold on;
+    ax = gca; 
+    title(titleStr);
+
+    E = zeros(1, length(data));
+    sigma_y = zeros(1, length(data));
+    for i = 1:length(data)
+        [sigma, epsilon] = sig_eps_eng(data{i}.F, data{i}.u, data{i}.A0, data{i}.L0);
+        if isempty(figStyle)
+            plot(epsilon, sigma);
+        else
+            plot(epsilon, sigma, figStyle{:});
+        end
+        E(i) = young_modulus(sigma, epsilon, 0);
+        sigma_y(i) = yield_strength(sigma, epsilon * 100, E(i));
+    end
+    E = mean(E);
+    sigma_y = mean(sigma_y);
+    default_figure_style(ax);
+end
+
+function [ax, E, sigma_y] = plotTrue(data, figStyle, titleStr)
+    figure; 
+    hold on;
+    ax = gca; 
+    title(titleStr);
+
+    E = zeros(1, length(data));
+    sigma_y = zeros(1, length(data));
+    for i = 1:length(data)
+        [sigma, epsilon] = sig_eps_eng(data{i}.F, data{i}.u, data{i}.A0, data{i}.L0);
+        E(i) = young_modulus(sigma, epsilon, 0);
+        sigma_y(i) = yield_strength(sigma, epsilon * 100, E(i));
+        [sigma, epsilon] = sig_eps_tru(sigma, epsilon);
+        if isempty(figStyle)
+            plot(epsilon, sigma);
+        else
+            plot(epsilon, sigma, figStyle{:});
+        end
+    end
+    E = mean(E);
+    sigma_y = mean(sigma_y);
+    default_figure_style(ax);
+end
+
+function [ax, E, sigma_y] = plotStrainHardening(data, figStyle, titleStr)
+    figure; 
+    hold on;
+    ax = gca; 
+    title(titleStr);
+
+    E = zeros(1, length(data));
+    sigma_y = zeros(1, length(data));
+    for i = 1:length(data)
+        [sigma, epsilon] = sig_eps_eng(data{i}.F, data{i}.u, data{i}.A0, data{i}.L0);
+        E(i) = young_modulus(sigma, epsilon, 0);
+        sigma_y(i) = yield_strength(sigma, epsilon * 100, E(i));
+        [sigma, epsilon] = sig_eps_tru(sigma, epsilon);
+        [shr, ~, epsilon] = strain_hardening(sigma, epsilon, sigma_y(i));
+        if isempty(figStyle)
+            plot(epsilon, shr, '-');
+        else
+            plot(epsilon, shr, '-', figStyle{:});
+        end
+    end
+    E = mean(E);
+    sigma_y = mean(sigma_y);
+    default_figure_style(ax);
+end
+
+function setAxisLimits(ax)
+    xlimMax = 0;
+    ylimMax = 0;
+    for nax = 1:length(ax)
+        xlimMax = max(xlimMax,max(ax(nax).XLim));
+        ylimMax = max(ylimMax,max(ax(nax).YLim));
+    end
+    for nax = 1:length(ax)
+        ax(nax).XLim = [0, xlimMax];
+        ax(nax).YLim = [0, ylimMax];
+    end
+end
